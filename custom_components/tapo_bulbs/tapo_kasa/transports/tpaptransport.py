@@ -357,6 +357,20 @@ class TpapEncryptionSession:
                     candidate_secret,
                     passcode_type=passcode_type,
                 )
+                _ec = register_result.get("extra_crypt")
+                _LOGGER.warning(
+                    "TPAP %s register keys=%s extra_crypt=%s user_hash_type=%s "
+                    "passcode_type=%s cred_format=%s username_len=%s",
+                    self._transport._host,
+                    sorted(register_result.keys()),
+                    {k: (v if k in ("type", "params") and not isinstance(v, str) or k == "type" else "<redacted>") for k, v in _ec.items()} if isinstance(_ec, dict) else _ec,
+                    self._tpap_user_hash_type,
+                    passcode_type,
+                    "user/pass" if "/" in credentials_string else "other",
+                    len(self._transport._config.credentials.username or "")
+                    if self._transport._config.credentials
+                    else None,
+                )
                 share_params = self._build_share_params_from_register(
                     register_result, credentials_string
                 )
