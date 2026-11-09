@@ -43,7 +43,7 @@ from custom_components.tapo_bulbs.tapo_kasa.protocols.iotprotocol import _deprec
 from custom_components.tapo_bulbs.tapo_kasa.smartcam.modules.camera import StreamResolution
 from custom_components.tapo_bulbs.tapo_kasa.transports import BaseTransport
 
-__version__ = "0.10.2-tpap-vendored"
+__version__ = "0.12.0-tpap-vendored"
 
 
 __all__ = [

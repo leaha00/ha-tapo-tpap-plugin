@@ -287,42 +287,13 @@ class TpapEncryptionSession:
         raise DeviceError(full, error_code=error_code)
 
     async def _perform_auth_handshake(self) -> None:
-        passcode_types = self._get_passcode_types()
-        _LOGGER.debug(
-            "TPAP %s advertises pake=%s; trying passcode types %s",
-            self._transport._host,
-            self._tpap_pake,
-            passcode_types,
-        )
-        if not passcode_types:
+        passcode_type = self._get_passcode_type()
+        if passcode_type is None:
             raise AuthenticationError(
                 f"TPAP: no supported passcode type for {self._transport._host}"
             )
-        last_exc: Exception | None = None
-        for index, passcode_type in enumerate(passcode_types):
-            try:
-                await self._perform_auth_handshake_with(passcode_type)
-                _LOGGER.debug(
-                    "TPAP %s authenticated using passcode type %s",
-                    self._transport._host,
-                    passcode_type,
-                )
-                return
-            except (_RetryableError, AuthenticationError, DeviceError) as exc:
-                last_exc = exc
-                _LOGGER.debug(
-                    "TPAP %s passcode type %s failed: %s",
-                    self._transport._host,
-                    passcode_type,
-                    exc,
-                )
-                if index == len(passcode_types) - 1:
-                    raise
-        if last_exc:  # pragma: no cover
-            raise last_exc
 
-    async def _perform_auth_handshake_with(self, passcode_type: str) -> None:
-        candidate_secrets = self._get_candidate_secrets(passcode_type)
+        candidate_secrets = self._get_candidate_secrets()
         if not candidate_secrets:
             raise AuthenticationError(
                 f"TPAP: no credential candidates available for {self._transport._host}"
@@ -356,20 +327,6 @@ class TpapEncryptionSession:
                     register_result,
                     candidate_secret,
                     passcode_type=passcode_type,
-                )
-                _ec = register_result.get("extra_crypt")
-                _LOGGER.debug(
-                    "TPAP %s register keys=%s extra_crypt=%s user_hash_type=%s "
-                    "passcode_type=%s cred_format=%s username_len=%s",
-                    self._transport._host,
-                    sorted(register_result.keys()),
-                    {k: (v if k in ("type", "params") and not isinstance(v, str) or k == "type" else "<redacted>") for k, v in _ec.items()} if isinstance(_ec, dict) else _ec,
-                    self._tpap_user_hash_type,
-                    passcode_type,
-                    "user/pass" if "/" in credentials_string else "other",
-                    len(self._transport._config.credentials.username or "")
-                    if self._transport._config.credentials
-                    else None,
                 )
                 share_params = self._build_share_params_from_register(
                     register_result, credentials_string
@@ -677,23 +634,6 @@ class TpapEncryptionSession:
             .hex()
             .upper()
         )
-
-    def _get_passcode_types(self) -> list[str]:
-        """Return passcode types to try: default (MAC) passcode first, then account."""
-        if self._uses_camera_auth or self._uses_robot_tpap_auth:
-            first = self._get_passcode_type()
-            return [first] if first else []
-        pake = set(self._tpap_pake)
-        order: list[str] = []
-        if 0 in pake:
-            order.append("default_userpw")
-        if pake.intersection((2, 5)):
-            order.append("userpw")
-        if 3 in pake:
-            order.append("shared_token")
-        if not order:
-            order.append("default_userpw")
-        return order
 
     def _get_passcode_type(self) -> str | None:
         passcode_type_order: tuple[tuple[tuple[int, ...], str], ...]
