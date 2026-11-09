@@ -3,10 +3,10 @@
   "name": "Tapo Bulbs (TPAP)",
   "codeowners": [],
   "config_flow": true,
-  "documentation": "https://gitea.k8s.leaha.co.uk/leaha/ha-tapo-trap-plugin",
+  "documentation": "https://github.com/leaha00/ha-tapo-trap-plugin",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "issue_tracker": "https://gitea.k8s.leaha.co.uk/leaha/ha-tapo-trap-plugin/issues",
+  "issue_tracker": "https://github.com/leaha00/ha-tapo-trap-plugin/issues",
   "loggers": ["custom_components.tapo_bulbs"],
   "requirements": ["ecdsa>=0.19.1", "passlib>=1.7.4", "mashumaro>=3.20"],
   "version": "0.1.0"
