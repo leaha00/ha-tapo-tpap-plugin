@@ -37,6 +37,7 @@ from homeassistant.helpers import (
     config_validation as cv,
     device_registry as dr,
     discovery_flow,
+    entity_registry as er,
 )
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.event import async_track_time_interval
@@ -122,6 +123,78 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     # Auto-discovery disabled: devices are added manually by host so they do
     # not duplicate those handled by the built-in TP-Link integration.
     return True
+
+
+@callback
+def _async_merge_legacy_registry(
+    hass: HomeAssistant, entry: TPLinkConfigEntry, device: Device
+) -> None:
+    """Merge the device and light created by 0.1.x into the current ones.
+
+    Version 0.1.x identified a bulb by its colon separated MAC and its light by
+    the same string. The current code uses the device id and an upper case MAC
+    without separators, so without this the bulb would appear twice. The old
+    light keeps its entity id and history and the old device keeps its name.
+    """
+    dev_reg = dr.async_get(hass)
+    ent_reg = er.async_get(hass)
+    old_ident = dr.format_mac(device.mac)
+    old_dev = dev_reg.async_get_device_by_identifier(
+        (DOMAIN, old_ident), entry.entry_id
+    )
+    if old_dev is None:
+        return
+    _LOGGER.info("Merging legacy device registry entry for %s", device.host)
+    new_unique_id = device.mac.replace(":", "").upper()
+    new_ident = (DOMAIN, str(device.device_id))
+    new_dev = dev_reg.async_get_device_by_identifier(new_ident, entry.entry_id)
+    if new_dev is not None and new_dev.id == old_dev.id:
+        return
+
+    # The old and new device are separate: copy over the name the user saw.
+    keep_name = old_dev.name_by_user or old_dev.name
+    if new_dev is not None:
+        updates: dict[str, Any] = {}
+        if keep_name and keep_name != new_dev.name:
+            updates["name_by_user"] = keep_name
+        if old_dev.area_id and not new_dev.area_id:
+            updates["area_id"] = old_dev.area_id
+        if updates:
+            dev_reg.async_update_device(new_dev.id, **updates)
+        target_device_id = new_dev.id
+    else:
+        # The new device does not exist yet: let the old one take the new
+        # identifiers so the entities attach to it.
+        dev_reg.async_update_device(
+            old_dev.id,
+            new_identifiers=set(old_dev.identifiers) | {new_ident},
+            new_connections=set(old_dev.connections)
+            | {(dr.CONNECTION_NETWORK_MAC, device.mac)},
+        )
+        target_device_id = old_dev.id
+        keep_name = None
+
+    # Light entity: drop the duplicate the new code created, then re-key the old
+    # one so it keeps its entity id and history.
+    old_ent_id = ent_reg.async_get_entity_id("light", DOMAIN, old_ident)
+    if old_ent_id is not None:
+        if (dup := ent_reg.async_get_entity_id("light", DOMAIN, new_unique_id)) and (
+            dup != old_ent_id
+        ):
+            ent_reg.async_remove(dup)
+        ent_reg.async_update_entity(
+            old_ent_id,
+            new_unique_id=new_unique_id,
+            device_id=target_device_id,
+            config_entry_id=entry.entry_id,
+        )
+    # Move anything else still on the old device, then remove it.
+    if target_device_id != old_dev.id:
+        for ent in er.async_entries_for_device(
+            ent_reg, old_dev.id, include_disabled_entities=True
+        ):
+            ent_reg.async_update_entity(ent.entity_id, device_id=target_device_id)
+        dev_reg.async_remove_device(old_dev.id)
 
 
 async def _async_upgrade_legacy_entry(
@@ -272,6 +345,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: TPLinkConfigEntry) -> No
                 "found": found_mac,
             },
         )
+
+    _async_merge_legacy_registry(hass, entry, device)
 
     parent_coordinator = TPLinkDataUpdateCoordinator(
         hass, device, timedelta(seconds=5), entry
