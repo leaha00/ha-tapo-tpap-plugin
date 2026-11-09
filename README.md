@@ -12,3 +12,7 @@ A Home Assistant integration that adds support for Tapo smart bulbs using the ne
 2. Download **Tapo Bulbs (TPAP)** and restart Home Assistant.
 3. Go to Settings -> Devices & services -> Add integration -> **Tapo Bulbs (TPAP)**.
 4. Enter the bulb's IP address and your TP-Link / Tapo account email and password.
+
+## Requirements
+
+The bulb must be added to your Tapo app under the same TP-Link account whose email and password you enter here. Bulbs that are not bound to that account reject the login.

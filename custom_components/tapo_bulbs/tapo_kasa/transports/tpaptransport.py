@@ -288,7 +288,7 @@ class TpapEncryptionSession:
 
     async def _perform_auth_handshake(self) -> None:
         passcode_types = self._get_passcode_types()
-        _LOGGER.warning(
+        _LOGGER.debug(
             "TPAP %s advertises pake=%s; trying passcode types %s",
             self._transport._host,
             self._tpap_pake,
@@ -302,7 +302,7 @@ class TpapEncryptionSession:
         for index, passcode_type in enumerate(passcode_types):
             try:
                 await self._perform_auth_handshake_with(passcode_type)
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "TPAP %s authenticated using passcode type %s",
                     self._transport._host,
                     passcode_type,
@@ -310,7 +310,7 @@ class TpapEncryptionSession:
                 return
             except (_RetryableError, AuthenticationError, DeviceError) as exc:
                 last_exc = exc
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "TPAP %s passcode type %s failed: %s",
                     self._transport._host,
                     passcode_type,
@@ -358,7 +358,7 @@ class TpapEncryptionSession:
                     passcode_type=passcode_type,
                 )
                 _ec = register_result.get("extra_crypt")
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "TPAP %s register keys=%s extra_crypt=%s user_hash_type=%s "
                     "passcode_type=%s cred_format=%s username_len=%s",
                     self._transport._host,

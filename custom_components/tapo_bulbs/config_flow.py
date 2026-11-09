@@ -22,6 +22,7 @@ class TapoBulbsFlow(ConfigFlow, domain=DOMAIN):
         errors = {}
         placeholders = {"detail": ""}
         if user_input is not None:
+            dev = None
             try:
                 dev = await Discover.discover_single(
                     user_input[CONF_HOST],
@@ -36,7 +37,6 @@ class TapoBulbsFlow(ConfigFlow, domain=DOMAIN):
                     await self.async_set_unique_id(format_mac(dev.mac))
                     self._abort_if_unique_id_configured(updates=user_input)
                     title = dev.alias or dev.model
-                    await dev.disconnect()
                     return self.async_create_entry(title=title, data=user_input)
             except AuthenticationError as err:
                 _LOGGER.exception("Authentication failed for %s", user_input[CONF_HOST])
@@ -50,6 +50,9 @@ class TapoBulbsFlow(ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected error for %s", user_input[CONF_HOST])
                 placeholders["detail"] = f"{type(err).__name__}: {err}"
                 errors["base"] = "unknown"
+            finally:
+                if dev is not None:
+                    await dev.disconnect()
         schema = vol.Schema(
             {
                 vol.Required(CONF_HOST): str,

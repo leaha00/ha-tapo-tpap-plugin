@@ -9,5 +9,5 @@
   "issue_tracker": "https://github.com/leaha00/ha-tapo-trap-plugin/issues",
   "loggers": ["custom_components.tapo_bulbs"],
   "requirements": ["ecdsa>=0.19.1", "passlib>=1.7.4", "mashumaro>=3.20"],
-  "version": "0.1.3"
+  "version": "0.1.4"
 }

@@ -41,12 +41,15 @@ class TapoCoordinator(DataUpdateCoordinator):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     creds = Credentials(entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD])
+    device = None
     try:
         device = await Discover.discover_single(entry.data[CONF_HOST], credentials=creds)
         if device is None:
             raise ConfigEntryNotReady("No response from bulb")
         await device.update()
     except KasaException as err:
+        if device is not None:
+            await device.disconnect()
         raise ConfigEntryNotReady(str(err)) from err
     coordinator = TapoCoordinator(hass, entry, device)
     await coordinator.async_config_entry_first_refresh()
