@@ -6,10 +6,10 @@
   "dependencies": [
     "network"
   ],
-  "documentation": "https://github.com/leaha00/ha-tapo-trap-plugin",
+  "documentation": "https://github.com/leaha00/ha-tapo-tpap-plugin",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/leaha00/ha-tapo-trap-plugin/issues",
+  "issue_tracker": "https://github.com/leaha00/ha-tapo-tpap-plugin/issues",
   "loggers": [
     "custom_components.tapo_bulbs"
   ],
@@ -18,5 +18,5 @@
     "passlib>=1.7.4",
     "mashumaro>=3.20"
   ],
-  "version": "0.2.1"
+  "version": "0.2.2"
 }

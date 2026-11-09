@@ -13,7 +13,7 @@ Cameras and robot vacuums are not included.
 
 ## Install
 
-1. In HACS, add `https://github.com/leaha00/ha-tapo-trap-plugin` as a custom repository (type: Integration).
+1. In HACS, add `https://github.com/leaha00/ha-tapo-tpap-plugin` as a custom repository (type: Integration).
 2. Download **Tapo Bulbs (TPAP)** and restart Home Assistant.
 3. Go to Settings -> Devices & services -> Add integration -> **Tapo Bulbs (TPAP)**.
 4. Enter the device's IP address, then your TP-Link / Tapo account email and password.
