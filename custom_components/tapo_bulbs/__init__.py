@@ -124,8 +124,58 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
+async def _async_upgrade_legacy_entry(
+    hass: HomeAssistant, entry: TPLinkConfigEntry
+) -> None:
+    """Convert a 0.1.x entry (host, username, password) to the current format."""
+    host = entry.data[CONF_HOST]
+    _LOGGER.info("Upgrading legacy config entry for %s", host)
+    creds = Credentials(entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD])
+    try:
+        device = await Discover.discover_single(host, credentials=creds)
+        if device is None:
+            raise ConfigEntryNotReady(f"No response from {host} while upgrading entry")
+        await device.update()
+    except AuthenticationError as ex:
+        raise ConfigEntryAuthFailed(
+            translation_domain=DOMAIN,
+            translation_key="device_authentication",
+            translation_placeholders={"func": "connect", "exc": str(ex)},
+        ) from ex
+    except KasaException as ex:
+        raise ConfigEntryNotReady(
+            translation_domain=DOMAIN,
+            translation_key="device_error",
+            translation_placeholders={"func": "connect", "exc": str(ex)},
+        ) from ex
+    try:
+        data: dict[str, Any] = {
+            CONF_HOST: device.host,
+            CONF_ALIAS: device.alias,
+            CONF_MODEL: device.model,
+            CONF_CONNECTION_PARAMETERS: device.config.connection_type.to_dict(),
+            CONF_USES_HTTP: device.config.uses_http,
+        }
+        if device.config.aes_keys:
+            data[CONF_AES_KEYS] = device.config.aes_keys
+        if device.credentials_hash:
+            data[CONF_CREDENTIALS_HASH] = device.credentials_hash
+        if port := device.config.port_override:
+            data[CONF_PORT] = port
+        hass.config_entries.async_update_entry(
+            entry,
+            data=data,
+            minor_version=CONF_CONFIG_ENTRY_MINOR_VERSION,
+        )
+    finally:
+        await device.disconnect()
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: TPLinkConfigEntry) -> None:
     """Set up TPLink from a config entry."""
+    if CONF_CONNECTION_PARAMETERS not in entry.data and CONF_USERNAME in entry.data:
+        await _async_upgrade_legacy_entry(hass, entry)
+
     host: str = entry.data[CONF_HOST]
     credentials = await get_credentials(hass)
     entry_credentials_hash = entry.data.get(CONF_CREDENTIALS_HASH)

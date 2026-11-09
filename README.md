@@ -24,7 +24,7 @@ Devices are added by IP address. Automatic discovery is turned off so devices ar
 
 - Home Assistant 2026.11.0 or newer.
 - The device must be added to your Tapo app under the same TP-Link account whose email and password you enter here. Devices that are not bound to that account reject the login.
-- If you used an older version (0.1.x) of this integration, remove its entries before upgrading. The stored data format changed.
+- Entries created by the older 0.1.x versions are converted automatically on first load.
 
 ## Credits and licence
 
