@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow
 from homeassistant.helpers.device_registry import format_mac
@@ -9,6 +11,8 @@ from homeassistant.helpers.device_registry import format_mac
 from .const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, DOMAIN
 from .tapo_kasa import Credentials, Discover
 from .tapo_kasa.exceptions import AuthenticationError, KasaException
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class TapoBulbsFlow(ConfigFlow, domain=DOMAIN):
@@ -23,6 +27,7 @@ class TapoBulbsFlow(ConfigFlow, domain=DOMAIN):
                     credentials=Credentials(user_input[CONF_USERNAME], user_input[CONF_PASSWORD]),
                 )
                 if dev is None:
+                    _LOGGER.error("Discovery returned no device for %s", user_input[CONF_HOST])
                     errors["base"] = "cannot_connect"
                 else:
                     await dev.update()
@@ -32,8 +37,10 @@ class TapoBulbsFlow(ConfigFlow, domain=DOMAIN):
                     await dev.disconnect()
                     return self.async_create_entry(title=title, data=user_input)
             except AuthenticationError:
+                _LOGGER.exception("Authentication failed for %s", user_input[CONF_HOST])
                 errors["base"] = "invalid_auth"
             except KasaException:
+                _LOGGER.exception("Could not connect to %s", user_input[CONF_HOST])
                 errors["base"] = "cannot_connect"
         schema = vol.Schema(
             {
