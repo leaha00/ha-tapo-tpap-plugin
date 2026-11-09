@@ -8,8 +8,9 @@
       }
     },
     "error": {
-      "cannot_connect": "Could not connect to the bulb",
-      "invalid_auth": "Invalid TP-Link account credentials"
+      "cannot_connect": "Could not connect to the bulb: {detail}",
+      "invalid_auth": "Login rejected: {detail}",
+      "unknown": "Unexpected error: {detail}"
     },
     "abort": {"already_configured": "Bulb already configured"}
   }

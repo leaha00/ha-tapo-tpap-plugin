@@ -20,6 +20,7 @@ class TapoBulbsFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         errors = {}
+        placeholders = {"detail": ""}
         if user_input is not None:
             try:
                 dev = await Discover.discover_single(
@@ -28,6 +29,7 @@ class TapoBulbsFlow(ConfigFlow, domain=DOMAIN):
                 )
                 if dev is None:
                     _LOGGER.error("Discovery returned no device for %s", user_input[CONF_HOST])
+                    placeholders["detail"] = "Discovery got no response from the bulb (UDP 20002)."
                     errors["base"] = "cannot_connect"
                 else:
                     await dev.update()
@@ -36,12 +38,18 @@ class TapoBulbsFlow(ConfigFlow, domain=DOMAIN):
                     title = dev.alias or dev.model
                     await dev.disconnect()
                     return self.async_create_entry(title=title, data=user_input)
-            except AuthenticationError:
+            except AuthenticationError as err:
                 _LOGGER.exception("Authentication failed for %s", user_input[CONF_HOST])
+                placeholders["detail"] = f"{type(err).__name__}: {err}"
                 errors["base"] = "invalid_auth"
-            except KasaException:
+            except KasaException as err:
                 _LOGGER.exception("Could not connect to %s", user_input[CONF_HOST])
+                placeholders["detail"] = f"{type(err).__name__}: {err}"
                 errors["base"] = "cannot_connect"
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.exception("Unexpected error for %s", user_input[CONF_HOST])
+                placeholders["detail"] = f"{type(err).__name__}: {err}"
+                errors["base"] = "unknown"
         schema = vol.Schema(
             {
                 vol.Required(CONF_HOST): str,
@@ -49,4 +57,4 @@ class TapoBulbsFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_PASSWORD): str,
             }
         )
-        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+        return self.async_show_form(step_id="user", data_schema=schema, errors=errors, description_placeholders=placeholders)
