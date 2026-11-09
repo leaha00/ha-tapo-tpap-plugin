@@ -287,13 +287,42 @@ class TpapEncryptionSession:
         raise DeviceError(full, error_code=error_code)
 
     async def _perform_auth_handshake(self) -> None:
-        passcode_type = self._get_passcode_type()
-        if passcode_type is None:
+        passcode_types = self._get_passcode_types()
+        _LOGGER.warning(
+            "TPAP %s advertises pake=%s; trying passcode types %s",
+            self._transport._host,
+            self._tpap_pake,
+            passcode_types,
+        )
+        if not passcode_types:
             raise AuthenticationError(
                 f"TPAP: no supported passcode type for {self._transport._host}"
             )
+        last_exc: Exception | None = None
+        for index, passcode_type in enumerate(passcode_types):
+            try:
+                await self._perform_auth_handshake_with(passcode_type)
+                _LOGGER.warning(
+                    "TPAP %s authenticated using passcode type %s",
+                    self._transport._host,
+                    passcode_type,
+                )
+                return
+            except (_RetryableError, AuthenticationError, DeviceError) as exc:
+                last_exc = exc
+                _LOGGER.warning(
+                    "TPAP %s passcode type %s failed: %s",
+                    self._transport._host,
+                    passcode_type,
+                    exc,
+                )
+                if index == len(passcode_types) - 1:
+                    raise
+        if last_exc:  # pragma: no cover
+            raise last_exc
 
-        candidate_secrets = self._get_candidate_secrets()
+    async def _perform_auth_handshake_with(self, passcode_type: str) -> None:
+        candidate_secrets = self._get_candidate_secrets(passcode_type)
         if not candidate_secrets:
             raise AuthenticationError(
                 f"TPAP: no credential candidates available for {self._transport._host}"
@@ -634,6 +663,23 @@ class TpapEncryptionSession:
             .hex()
             .upper()
         )
+
+    def _get_passcode_types(self) -> list[str]:
+        """Return passcode types to try: default (MAC) passcode first, then account."""
+        if self._uses_camera_auth or self._uses_robot_tpap_auth:
+            first = self._get_passcode_type()
+            return [first] if first else []
+        pake = set(self._tpap_pake)
+        order: list[str] = []
+        if 0 in pake:
+            order.append("default_userpw")
+        if pake.intersection((2, 5)):
+            order.append("userpw")
+        if 3 in pake:
+            order.append("shared_token")
+        if not order:
+            order.append("default_userpw")
+        return order
 
     def _get_passcode_type(self) -> str | None:
         passcode_type_order: tuple[tuple[tuple[int, ...], str], ...]
