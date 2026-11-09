@@ -1,0 +1,16 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Tapo bulb (TPAP)",
+        "description": "Enter the bulb IP and your TP-Link / Tapo account login.",
+        "data": {"host": "Host", "username": "Email", "password": "Password"}
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the bulb",
+      "invalid_auth": "Invalid TP-Link account credentials"
+    },
+    "abort": {"already_configured": "Bulb already configured"}
+  }
+}
